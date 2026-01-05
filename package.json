@@ -1,0 +1,50 @@
+{
+  "name": "typora-vsc",
+  "displayName": "Typora VSC",
+  "description": "WYSIWYG Markdown Editor for VS Code",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "publisher": "byted-extensions",
+  "categories": [
+    "Editors"
+  ],
+  "activationEvents": [
+    "onCustomEditor:typoraVsc.editor"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "typoraVsc.editor",
+        "displayName": "Typora WYSIWYG Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.md"
+          }
+        ],
+        "priority": "default"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "16.x",
+    "@types/vscode": "^1.75.0",
+    "@typescript-eslint/eslint-plugin": "^5.55.0",
+    "@typescript-eslint/parser": "^5.55.0",
+    "eslint": "^8.36.0",
+    "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "vditor": "^3.11.2"
+  }
+}
