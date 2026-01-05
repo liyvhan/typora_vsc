@@ -35,7 +35,6 @@ class MarkdownEditorProvider {
         this.context = context;
     }
     async resolveCustomTextEditor(document, webviewPanel, _token) {
-        console.log(`Resolving editor for: ${document.uri.toString()}`);
         webviewPanel.webview.options = {
             enableScripts: true,
             localResourceRoots: [
@@ -44,11 +43,9 @@ class MarkdownEditorProvider {
         };
         const scriptUri = webviewPanel.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', 'vditor', 'dist', 'index.min.js'));
         const styleUri = webviewPanel.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', 'vditor', 'dist', 'index.css'));
-        // Vditor CDN should point to the directory containing 'dist'
         const vditorAssetUri = webviewPanel.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'node_modules', 'vditor'));
         webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview, scriptUri, styleUri, vditorAssetUri);
         function updateWebview() {
-            console.log('Sending update message to webview');
             webviewPanel.webview.postMessage({
                 type: 'update',
                 text: document.getText(),
@@ -81,7 +78,6 @@ class MarkdownEditorProvider {
             vscode.env.openExternal(vscode.Uri.parse(href));
         }
         else {
-            // 处理相对路径跳转
             const folderPath = vscode.Uri.joinPath(document.uri, '..');
             const targetUri = vscode.Uri.joinPath(folderPath, href);
             vscode.commands.executeCommand('vscode.open', targetUri);
@@ -118,11 +114,9 @@ class MarkdownEditorProvider {
 					#vditor {
 						border: none !important;
 					}
-					/* 隐藏工具栏以更像 Typora */
 					.vditor-toolbar {
 						display: none !important;
 					}
-					/* 大纲样式优化 */
 					.vditor-outline {
 						border-left: 1px solid var(--vscode-widget-shadow) !important;
 						background-color: var(--vscode-sideBar-background) !important;
@@ -138,7 +132,6 @@ class MarkdownEditorProvider {
 						background-color: var(--vscode-list-activeSelectionBackground) !important;
 						color: var(--vscode-list-activeSelectionForeground) !important;
 					}
-					/* 修复代码块背景颜色 */
 					.vditor-reset pre > code {
 						background-color: var(--vscode-textCodeBlock-background) !important;
 						color: var(--vscode-editor-foreground) !important;
@@ -150,10 +143,9 @@ class MarkdownEditorProvider {
 					.vditor-ir__node--expand {
 						background-color: var(--vscode-textCodeBlock-background) !important;
 					}
-					/* 隐藏按钮样式 - 美化为侧边收缩箭头 */
 					#toggle-outline {
 						position: fixed;
-						right: 200px; /* 大纲默认宽度是 200px */
+						right: 200px;
 						top: 50%;
 						transform: translateY(-50%);
 						z-index: 100;
@@ -198,7 +190,6 @@ class MarkdownEditorProvider {
 						font-family: var(--vscode-editor-font-family) !important;
 						font-size: var(--vscode-editor-font-size) !important;
 					}
-					/* 补全菜单样式适配 */
 					.vditor-hint {
 						background-color: var(--vscode-menu-background) !important;
 						border: 1px solid var(--vscode-menu-border) !important;
@@ -210,19 +201,16 @@ class MarkdownEditorProvider {
 					}
 				</style>
 				<script>
-					// 在加载 Vditor 脚本前设置错误监听
-					window.onerror = function(message, source, lineno, colno, error) {
+					window.onerror = function(message, source, lineno) {
 						const log = document.getElementById('error-log');
-						if (log) {
-							log.innerText += "\\n[Runtime Error] " + message + "\\nSource: " + source + ":" + lineno;
-						}
+						if (log) { log.innerText += "\\n[Runtime Error] " + message; }
 						return false;
 					};
 				</script>
 				<script src="${scriptUri}"></script>
 			</head>
 			<body>
-				<div id="loading">正在加载编辑器... (本地模式)</div>
+				<div id="loading">正在加载编辑器...</div>
 				<div id="error-log"></div>
 				<button id="toggle-outline" title="切换大纲">
 					<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
@@ -235,118 +223,71 @@ class MarkdownEditorProvider {
 					let vditor;
 					let isUpdating = false;
 
-					console.log('Webview: Checking Vditor existence:', typeof Vditor);
-					
-					if (typeof Vditor === 'undefined') {
-						document.getElementById('error-log').innerText += "\\n[Critical Error] Vditor script failed to load. Check script URI and CSP.";
-					} else {
-						try {
-							vditor = new Vditor('vditor', {
-								height: '100vh',
-								mode: 'ir',
-								cdn: '${vditorAssetUri}', // 指向本地 node_modules/vditor
-								debugger: true,
-								typewriterMode: true,
-								placeholder: '开始写作...',
-								theme: document.body.classList.contains('vscode-dark') ? 'dark' : 'classic',
-								preview: {
-									theme: {
-										current: document.body.classList.contains('vscode-dark') ? 'dark' : 'light',
-									},
-									hljs: {
-										style: document.body.classList.contains('vscode-dark') ? 'vs2015' : 'vs',
-									}
-								},
-								cache: {
-									enable: false,
-								},
-								outline: {
-									enable: true,
-									position: 'right',
-								},
-								hint: {
-									delay: 100,
-									extend: [
-										{
-											key: '/',
-											hint: (value) => {
-												const commands = [
-													{ value: '## ', html: '✨ 二级标题' },
-													{ value: '### ', html: '✨ 三级标题' },
-													{ value: '| 列1 | 列2 |\\n| --- | --- |', html: '📊 表格' },
-												];
-												return commands.filter(item => item.value.toLowerCase().includes(value.toLowerCase()));
-											}
-										}
-									]
-								},
-								link: {
-									isOpen: false,
-								},
-								after: () => {
-									console.log('Webview: Vditor ready');
-									document.getElementById('loading').style.display = 'none';
-									vscode.postMessage({ type: 'ready' });
-								},
-								input: (value) => {
-									if (isUpdating) return;
-									vscode.postMessage({
-										type: 'change',
-										text: value
-									});
-								},
-							});
-						} catch (e) {
-							document.getElementById('error-log').innerText += "\\n[Init Error] " + e.stack;
-						}
-					}
-
-					// 处理点击跳转
-					document.addEventListener('click', (e) => {
-						const target = e.target;
-						const anchor = target.closest('a') || 
-									   target.closest('span[data-type="a"]') || 
-									   target.closest('span[data-type="link"]');
-						
-						if (anchor && (e.ctrlKey || e.metaKey)) {
-							let href = anchor.getAttribute('href') || 
-									   anchor.getAttribute('data-href') ||
-									   anchor.innerText;
-							
-							if (href) {
-								// 彻底清理 Markdown 链接残留
-								// 如果是 [text](url) 格式
-								if (href.includes('](')) {
-									const parts = href.split('](');
-									if (parts.length > 1) {
-										href = parts[1].split(')')[0];
+					vditor = new Vditor('vditor', {
+						height: '100vh',
+						mode: 'ir',
+						cdn: '${vditorAssetUri}',
+						debugger: false,
+						typewriterMode: true,
+						placeholder: '开始写作...',
+						theme: document.body.classList.contains('vscode-dark') ? 'dark' : 'classic',
+						preview: {
+							theme: {
+								current: document.body.classList.contains('vscode-dark') ? 'dark' : 'light',
+							},
+							hljs: {
+								style: document.body.classList.contains('vscode-dark') ? 'vs2015' : 'vs',
+							}
+						},
+						cache: { enable: false },
+						outline: { enable: true, position: 'right' },
+						hint: {
+							delay: 100,
+							extend: [
+								{
+									key: '/',
+									hint: (value) => {
+										const commands = [
+											{ value: '## ', html: '✨ 二级标题' },
+											{ value: '### ', html: '✨ 三级标题' },
+											{ value: '| 列1 | 列2 |\\n| --- | --- |', html: '📊 表格' },
+										];
+										return commands.filter(item => item.value.toLowerCase().includes(value.toLowerCase()));
 									}
 								}
-								// 移除可能的包裹括号
+							]
+						},
+						link: { isOpen: false },
+						after: () => {
+							document.getElementById('loading').style.display = 'none';
+							vscode.postMessage({ type: 'ready' });
+						},
+						input: (value) => {
+							if (isUpdating) return;
+							vscode.postMessage({ type: 'change', text: value });
+						},
+					});
+
+					document.addEventListener('click', (e) => {
+						const target = e.target;
+						const anchor = target.closest('a') || target.closest('span[data-type="a"]') || target.closest('span[data-type="link"]');
+						if (anchor && (e.ctrlKey || e.metaKey)) {
+							let href = anchor.getAttribute('href') || anchor.getAttribute('data-href') || anchor.innerText;
+							if (href) {
+								if (href.includes('](')) href = href.split('](')[1].split(')')[0];
 								href = href.trim().replace(/^\\(/, '').replace(/\\)$/, '');
-								
-								vscode.postMessage({
-									type: 'openLink',
-									href: href
-								});
-								e.preventDefault();
-								e.stopPropagation();
+								vscode.postMessage({ type: 'openLink', href: href });
+								e.preventDefault(); e.stopPropagation();
 							}
 						}
 					}, true);
 
 					window.addEventListener('message', event => {
 						const message = event.data;
-						console.log('Webview received message:', message.type);
-						switch (message.type) {
-							case 'update':
-								const text = message.text;
-								if (vditor && text !== vditor.getValue()) {
-									isUpdating = true;
-									vditor.setValue(text);
-									isUpdating = false;
-								}
-								break;
+						if (message.type === 'update' && vditor && message.text !== vditor.getValue()) {
+							isUpdating = true;
+							vditor.setValue(message.text);
+							isUpdating = false;
 						}
 					});
 
@@ -358,7 +299,6 @@ class MarkdownEditorProvider {
 					});
 					observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
-					// 目录切换逻辑
 					document.getElementById('toggle-outline').addEventListener('click', () => {
 						document.body.classList.toggle('outline-hidden');
 					});
