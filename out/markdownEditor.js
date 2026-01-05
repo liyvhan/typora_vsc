@@ -209,7 +209,7 @@ class MarkdownEditorProvider {
 				</script>
 				<script src="${scriptUri}"></script>
 			</head>
-			<body>
+			<body class="outline-hidden">
 				<div id="loading">正在加载编辑器...</div>
 				<div id="error-log"></div>
 				<button id="toggle-outline" title="切换大纲">
